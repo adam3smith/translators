@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcs",
-	"lastUpdated": "2013-08-03 13:10:31"
+	"lastUpdated": "2013-09-01 11:40:36"
 }
 
 /*
@@ -18,6 +18,12 @@ Université de Nice, France (http://catalogue.unice.fr/)  (looks like this is Pr
 Supports Primo 3
 Boston College (http://www.bc.edu/supersleuth),
 Oxford Libraries (http://solo.ouls.ox.ac.uk/)
+
+Primos with showPNX.jsp installed:
+(1) http://purdue-primo-prod.hosted.exlibrisgroup.com/primo_library/libweb/action/search.do?vid=PURDUE
+(2) http://primo.bib.uni-mannheim.de/primo_library/libweb/action/search.do?vid=MAN_UB
+(3) http://limo.libis.be/primo_library/libweb/action/search.do?vid=LIBISnet&fromLogin=true
+(4.a) http://virtuose.uqam.ca/primo_library/libweb/action/search.do?vid=UQAM
 */
 
 function detectWeb(doc, url) {
@@ -39,6 +45,20 @@ function detectWeb(doc, url) {
 
 function doWeb(doc, url) {
 	var links = new Array();
+	
+	/*JSP - STEP 1:	Test if showPNX.jsp is on the server and giving some xml-output:
+	First, calculate the directorey where the showPNX.jsp will be found.
+	Then it is tested if the showPNX.jsp is there. For this test we try to reach the showPNX.jsp on the server with a doGet command. The variable PrimoWithJSP will be set to true/false depending on this test and used later on. Because of this dependency everything which is following has to be put into the "onDone"-part of the doGet command.
+	for more info see: https://forums.zotero.org/discussion/31294/possible-solution-for-primo-bug/#Item_5
+	*/
+	//e.g url = http://primo.bib.uni-mannheim.de/primo_library/libweb/action/search.do?...
+	var urlHost =  url.substr(0,url.lastIndexOf('/'));//e.g urlHost = http://primo.bib.uni-mannheim.de/primo_library/libweb/action
+	var urlDirectory =  urlHost.substr(0,urlHost.lastIndexOf('/')+1);//e.g urlDirectory = http://primo.bib.uni-mannheim.de/primo_library/libweb/
+	Zotero.debug(urlDirectory);
+	var PrimoWithJSP = false;
+	Zotero.Utilities.HTTP.doGet(urlDirectory+'showPNX.jsp?id=0', function (text, response, url) { if (text.substr(0,5) == '<?xml') {PrimoWithJSP = true } }, function() {
+		//=====>Inside the doGet, because we want to call it afterwards<=======Â´
+	
 	
 	if (detectWeb(doc,url) == 'multiple') {
 			var items = new Object();
@@ -68,9 +88,15 @@ function doWeb(doc, url) {
 				for (i in linkIterator) {
 					var link = linkIterator[i];
 					var title = titleIterator[i];
-					// create an array containing the links and add '&showPnx=true' to the end
-					var xmlLink =  Zotero.Utilities.trimInternal(link.textContent)+'&showPnx=true';
-					//Zotero.debug(xmlLink);
+					
+					if (PrimoWithJSP) {
+							//Create an array containing the links to the directory and add 'showPNX.jsp?id=' and the actual index number to the end.
+							var xmlLink =  urlDirectory + 'showPNX.jsp?id='+i;
+						} else {
+							// create an array containing the links and add '&showPnx=true' to the end
+							var xmlLink = Zotero.Utilities.trimInternal(link.textContent)+'&showPnx=true';
+						}
+						Zotero.debug('93 xmlLink = ' + xmlLink);
 					var title = Zotero.Utilities.trimInternal(title.textContent);
 					items[xmlLink] = title;
 				}
@@ -95,11 +121,17 @@ function doWeb(doc, url) {
 			}
 
 	} else {
-		links = url + '&showPnx=true';
+		//JSP - STEP 3: Different Cases for single element
+			if (PrimoWithJSP) {
+				links = urlDirectory + 'showPNX.jsp?id=0';
+			} else {
+				links = url + '&showPnx=true';
+			}
 		Zotero.Utilities.doGet(links, scrape, function () {
 			Zotero.done();
 		});
 	}
+	})
 }
 	//Zotero.Utilities.HTTP.doGet(links, function(text) {
 	
@@ -112,8 +144,18 @@ function doWeb(doc, url) {
 			return "false"
 		}  */
 		Z.debug(text);
-		//remove the ns declarations - we don't need them and they break this
-		text = text.replace(/\<record[^\>]*/, "<record");
+		//a lot of these apply only to prim records, mainly (but no exclusively) served by the jsp file
+		text = text.replace(/\<xml-fragment[^\>]*\>/, "");
+		text = text.replace(/\<\/xml-fragment\>/, "");
+		text = text.replace(/\<\!\[CDATA\[([^\]]*)\]\]\>/g,"$1");
+		text = text.replace(/\<[^\/:\>]*:([^\>]*)/g, "<$1"); //<prim:record> etc.
+		text = text.replace(/\<\/[^:\>]*:([^\>]*)/g, "</$1");
+		text = text.replace(/\<record[^\>]*/, "<record");//remove the ns declarations - we don't need them and they break this
+		text = text.replace(/&lt;span[^\>]*\>/g, ""); //<span class="searchword">something</span>
+		text = text.replace(/&lt;\/span\>/g, "");
+		text = text.replace(/\<span[^\>]*\>/g, "");
+		text = text.replace(/\<\/span\>/g, "");
+		
 		var parser = new DOMParser();
 		var doc = parser.parseFromString(text, "text/xml");
 		var itemType = ZU.xpathText(doc, '//display/type');
