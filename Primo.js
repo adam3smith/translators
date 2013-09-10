@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcs",
-	"lastUpdated": "2013-09-01 11:40:36"
+	"lastUpdated": "2013-09-10 01:08:13"
 }
 
 /*
@@ -54,12 +54,10 @@ function doWeb(doc, url) {
 	//e.g url = http://primo.bib.uni-mannheim.de/primo_library/libweb/action/search.do?...
 	var urlHost =  url.substr(0,url.lastIndexOf('/'));//e.g urlHost = http://primo.bib.uni-mannheim.de/primo_library/libweb/action
 	var urlDirectory =  urlHost.substr(0,urlHost.lastIndexOf('/')+1);//e.g urlDirectory = http://primo.bib.uni-mannheim.de/primo_library/libweb/
-	Zotero.debug(urlDirectory);
+	Zotero.debug("urlDirectory: " + urlDirectory);
 	var PrimoWithJSP = false;
 	Zotero.Utilities.HTTP.doGet(urlDirectory+'showPNX.jsp?id=0', function (text, response, url) { if (text.substr(0,5) == '<?xml') {PrimoWithJSP = true } }, function() {
-		//=====>Inside the doGet, because we want to call it afterwards<=======Â´
-	
-	
+		//=====>Inside the doGet, because we want to call it afterwards<=======
 	if (detectWeb(doc,url) == 'multiple') {
 			var items = new Object();
 			var linkIterator = "";
@@ -126,6 +124,7 @@ function doWeb(doc, url) {
 				links = urlDirectory + 'showPNX.jsp?id=0';
 			} else {
 				links = url + '&showPnx=true';
+				Z.debug(links)
 			}
 		Zotero.Utilities.doGet(links, scrape, function () {
 			Zotero.done();
@@ -143,22 +142,23 @@ function doWeb(doc, url) {
 		if (text.length<10){
 			return "false"
 		}  */
-		Z.debug(text);
+		//Z.debug(text);
 		//a lot of these apply only to prim records, mainly (but no exclusively) served by the jsp file
+			//text = text.replace(/\<record[^\>]*/, "<record");//remove the ns declarations - we don't need them and they break this
+
 		text = text.replace(/\<xml-fragment[^\>]*\>/, "");
 		text = text.replace(/\<\/xml-fragment\>/, "");
-		text = text.replace(/\<\!\[CDATA\[([^\]]*)\]\]\>/g,"$1");
-		text = text.replace(/\<[^\/:\>]*:([^\>]*)/g, "<$1"); //<prim:record> etc.
-		text = text.replace(/\<\/[^:\>]*:([^\>]*)/g, "</$1");
-		text = text.replace(/\<record[^\>]*/, "<record");//remove the ns declarations - we don't need them and they break this
-		text = text.replace(/&lt;span[^\>]*\>/g, ""); //<span class="searchword">something</span>
-		text = text.replace(/&lt;\/span\>/g, "");
-		text = text.replace(/\<span[^\>]*\>/g, "");
-		text = text.replace(/\<\/span\>/g, "");
-		
+		text = text.replace(/\<prim:([^\>]*)/g, "<$1"); //<prim:record> etc.
+		text = text.replace(/\<\/prim:([^\>]*)/g, "</$1");
+		text = text.replace(/\<record[^\>]*/, "<record");//remove the ns declarations - we don't need them and they break this  */
+		text = text.replace(/(&lt;|<)span[^\>]*\>/g, ""); //<span class="searchword">something</span>
+		text = text.replace(/(&lt;|<)\/span\>/g, "");
+
+		Z.debug(text)
 		var parser = new DOMParser();
 		var doc = parser.parseFromString(text, "text/xml");
 		var itemType = ZU.xpathText(doc, '//display/type');
+
 		if (itemType) itemType = itemType.toLowerCase();
 		if (itemType == 'book' || itemType == 'books') {
 			var item = new Zotero.Item("book");
@@ -278,7 +278,40 @@ function doWeb(doc, url) {
 				item.tags.push(ZU.xpathText(doc, '//search/subject['+j+']'));
 			}
 		}
+		var abstract;
+		if (abstract = ZU.xpathText(doc, '//addata/abstract')) {
+			item.abstractNote = abstract;
+		}
+		else if (abstract = ZU.xpathText(doc, '//display/description')) {
+			item.abstractNote = abstract;
+		}
+		
+		var doi;
+		if (doi = ZU.xpathText(doc, '//addata/doi')) {
+			item.DOI = doi;
+		}
+		
+		var issue;
+		if (issue = ZU.xpathText(doc, '//addata/issue')) {
+			item.issue = issue;
+		}
 
+		var volume;
+		if (volume = ZU.xpathText(doc, '//addata/volume')) {
+			item.volume = volume;
+		}
+		
+		var publication;
+		if (publication = ZU.xpathText(doc, '//addata/jtitle')) {
+			item.publication = publication;
+		}
+		
+		var pages;
+		if (pages = ZU.xpathText(doc, '//addata/pages')) {
+			item.pages = pages;
+		}
+		
+		
 		// does callNumber get stored anywhere else in the xml?
 		var callNumber;
 		if (callNumber = ZU.xpathText(doc, '//enrichment/classificationlcc')) {
