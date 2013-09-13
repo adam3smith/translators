@@ -291,7 +291,16 @@ function importPNX(text) {
 	for(var i=0, n=subjects.length; i<n; i++) {
 		item.tags.push(ZU.trimInternal(subjects[i].textContent));
 	}
-
+	
+	item.abstractNote = ZU.xpathText(doc, '//addata/abstract')
+		|| ZU.xpathText(doc, '//display/description');
+	
+	item.DOI = ZU.xpathText(doc, '//addata/doi');
+	item.issue = ZU.xpathText(doc, '//addata/issue');
+	item.volume = ZU.xpathText(doc, '//addata/volume');
+	item.publication = ZU.xpathText(doc, '//addata/jtitle');
+	item.pages = ZU.xpathText(doc, '//addata/pages');
+	
 	// does callNumber get stored anywhere else in the xml?
 	item.callNumber = ZU.xpathText(doc, '//enrichment/classificationlcc');
 	
