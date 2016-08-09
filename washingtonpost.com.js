@@ -74,7 +74,7 @@ abstractNote	 : FW.Xpath('//meta[@name="description"]/@content').text(),
 ISSN			 : "0190-8286",
 publicationTitle : "The Washington Post"
 });
- 
+
 /** Articles Old*/
 FW.Scraper({
 itemType         : 'newspaperArticle',
@@ -91,7 +91,7 @@ abstractNote	 : FW.Xpath('//meta[@name="description"]/@content').text(),
 ISSN			 : "0190-8286",
 publicationTitle : "The Washington Post"
 });
-  
+
 
 FW.MultiScraper({
 itemType         : 'multiple',
