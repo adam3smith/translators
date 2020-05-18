@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsibv",
-	"lastUpdated": "2020-05-16 20:26:33"
+	"lastUpdated": "2020-05-18 02:30:19"
 }
 
 /*
@@ -182,7 +182,7 @@ function scrape(doc, url) {
 			)
 		) {
 			const collaboratorList
-				= study.ProtocolSection.SponsorCollaboratorsModule.collaboratorList
+				= study.ProtocolSection.SponsorCollaboratorsModule.CollaboratorList
 					.Collaborator;
 			collaboratorList.forEach((collaborator) => {
 				collaborators.push({
@@ -282,7 +282,7 @@ var testCases = [
 	},
 	{
 		"type": "web",
-		"url": "https://clinicaltrials.gov/ct2/show/NCT04261517?recrs=e&cond=COVID&draw=2&rank=8",
+		"url": "https://clinicaltrials.gov/ct2/show/NCT04261517?recrs=e&cond=COVID&draw=2",
 		"items": [
 			{
 				"itemType": "report",
@@ -294,19 +294,54 @@ var testCases = [
 						"creatorType": "author"
 					},
 					{
-						"firstName": "Shanghai Public Health Clinical Center",
-						"creatorType": "contributor"
+						"lastName": "Shanghai Public Health Clinical Center",
+						"creatorType": "contributor",
+						"fieldMode": 1
 					}
 				],
 				"date": "April 9, 2020",
 				"abstractNote": "The study aims to evaluate the efficacy and safety of hydroxychloroquine in the treatment of COVID-19 pneumonia.",
-				"accessDate": "2020-04-01",
 				"extra": "submitted: February 6, 2020",
 				"institution": "clinicaltrials.gov",
 				"libraryCatalog": "clinicaltrials.gov",
 				"reportNumber": "NCT04261517",
 				"reportType": "Clinical trial registration",
 				"url": "https://clinicaltrials.gov/ct2/show/NCT04261517",
+				"attachments": [],
+				"tags": [],
+				"notes": [],
+				"seeAlso": []
+			}
+		]
+	},
+	{
+		"type": "web",
+		"url": "https://clinicaltrials.gov/ct2/show/NCT03144778",
+		"items": [
+			{
+				"itemType": "report",
+				"title": "Checkpoint Inhibitors Assessment in Oropharynx Carcinoma (CIAO)",
+				"creators": [
+					{
+						"lastName": "M.D. Anderson Cancer Center",
+						"creatorType": "author",
+						"fieldMode": 1
+					},
+					{
+						"lastName": "National Cancer Institute (NCI)",
+						"creatorType": "contributor",
+						"fieldMode": 1
+					}
+				],
+				"date": "January 27, 2020",
+				"abstractNote": "This phase I trial studies how well durvalumab with or without tremelimumab works in treating participants with stage II-IVA oropharyngeal squamous cell cancer. Immunotherapy with monoclonal antibodies, such as durvalumab and tremelimumab, may help the body's immune system attack the cancer, and may interfere with the ability of tumor cells to grow and spread.",
+				"extra": "submitted: May 5, 2017",
+				"institution": "clinicaltrials.gov",
+				"libraryCatalog": "clinicaltrials.gov",
+				"reportNumber": "NCT03144778",
+				"reportType": "Clinical trial registration",
+				"shortTitle": "Durvalumab With or Without Tremelimumab in Treating Participants With Stage II-IVA Oropharyngeal Squamous Cell Cancer",
+				"url": "https://clinicaltrials.gov/ct2/show/NCT03144778",
 				"attachments": [],
 				"tags": [],
 				"notes": [],
