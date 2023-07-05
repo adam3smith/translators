@@ -9,13 +9,13 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsibv",
-	"lastUpdated": "2023-04-19 20:55:45"
+	"lastUpdated": "2023-06-17 18:11:26"
 }
 
 /*
 	***** BEGIN LICENSE BLOCK *****
 
-	Copyright © 2016, 2017 Philipp Zumstein & Sebastian Karcher
+	Copyright © 2016-2023 Philipp Zumstein & Sebastian Karcher
 
 	This file is part of Zotero.
 
@@ -35,13 +35,19 @@
 	***** END LICENSE BLOCK *****
 */
 
+// To add as tests https://zenodo.org/record/7747182 https://zenodo.org/record/3983622
+
 const datasetType = ZU.fieldIsValidForType('title', 'dataset')
 	? 'dataset'
 	: 'document';
 
+const preprintType = ZU.fieldIsValidForType('title', 'preprint')
+	? 'preprint'
+	: 'report';
+
 function detectWeb(doc, url) {
 	if (url.includes('/record/')) {
-		var collections = ZU.xpath(doc, '//span[@class="pull-right"]/span[contains(@class, "label-default")]');
+		var collections = doc.querySelectorAll('.pull-right .label-default');
 		for (var i = 0; i < collections.length; i++) {
 			var type = collections[i].textContent.toLowerCase();
 			//Z.debug(type)
@@ -67,15 +73,15 @@ function detectWeb(doc, url) {
 					return "bookSection";
 				case "patent":
 					return "patent";
-				case "report":
-				case "working paper":
+				case "report":				
 				case "project deliverables":
-				case "preprint":
 					return "report";
+				case "preprint":
+				case "working paper":
+					return preprintType;
 				case "thesis":
 					return "thesis";
 				case "dataset":
-				//change when dataset as itemtype is available
 					return datasetType;
 				case "journal article":
 					return "journalArticle";
@@ -92,7 +98,7 @@ function detectWeb(doc, url) {
 function getSearchResults(doc, checkOnly) {
 	var items = {};
 	var found = false;
-	var rows = ZU.xpath(doc, '//invenio-search-results//h4/a');
+	var rows = doc.querySelectorAll('invenio-search-results h4>a');
 	for (var i = 0; i < rows.length; i++) {
 		var href = rows[i].href;
 		var title = ZU.trimInternal(rows[i].textContent);
@@ -105,26 +111,21 @@ function getSearchResults(doc, checkOnly) {
 }
 
 
-function doWeb(doc, url) {
-	if (detectWeb(doc, url) == "multiple") {
-		Zotero.selectItems(getSearchResults(doc, false), function (items) {
-			if (!items) {
-				return;
-			}
-			var articles = [];
-			for (var i in items) {
-				articles.push(i);
-			}
-			ZU.processDocuments(articles, scrape);
-		});
+async function doWeb(doc, url) {
+	if (detectWeb(doc, url) == 'multiple') {
+		let items = await Zotero.selectItems(getSearchResults(doc, false));
+		if (!items) return;
+		for (let url of Object.keys(items)) {
+			await scrape(await requestDocument(url));
+		}
 	}
 	else {
-		scrape(doc, url);
+		await scrape(doc, url);
 	}
 }
 
 
-function scrape(doc, url) {
+async function scrape(doc, url = doc.location.href) {
 	var abstract = ZU.xpathText(doc, '//meta[@name="description"]/@content');
 	var doi = ZU.xpathText(doc, '//meta[@name="citation_doi"]/@content');
 	var pdfURL = ZU.xpathText(doc, '//meta[@name="citation_pdf_url"]/@content');
@@ -132,16 +133,16 @@ function scrape(doc, url) {
 	var cslURL = url.replace(/#.+/, "").replace(/\?.+/, "").replace(/\/export\/.+/, "") + "/export/csl";
 	// Z.debug(cslURL)
 	// use CSL JSON translator
-	ZU.processDocuments(cslURL, function (newDoc) {
-		var text = ZU.xpathText(newDoc, '//h3/following-sibling::pre');
+	let newDoc = await requestDocument(cslURL);
+		let cslJSON = ZU.xpathText(newDoc, '//h3/following-sibling::pre');
 		// Z. debug(text);
-		text = text.replace(/publisher_place/, "publisher-place");
-		text = text.replace(/container_title/, "container-title");
+		cslJSON = cslJSON.replace(/publisher_place/, "publisher-place");
+		cslJSON = cslJSON.replace(/container_title/, "container-title");
 
 		var trans = Zotero.loadTranslator('import');
 		// CSL JSON
 		trans.setTranslator('bc03b4fe-436d-4a1f-ba59-de4d2d7a63f7');
-		trans.setString(text);
+		trans.setString(cslJSON);
 		trans.setHandler("itemDone", function (obj, item) {
 			item.itemType = detectWeb(doc, url);
 			// The "note" field of CSL maps to Extra. Put it in a note instead
@@ -153,9 +154,9 @@ function scrape(doc, url) {
 				item.extra = "DOI: " + doi;
 			}
 
-			// workaround for pre 6.0.24 versions that don't have proper item type for data
+			// workaround for pre 6.0.24/26 versions that don't have proper item type for data or preprint
 			// if (schemaType && schemaType.includes("Dataset")) {
-			if (datasetType != "dataset" && ZU.xpathText(doc, '//span[@class="pull-right"]/span[contains(@class, "label-default") and contains(., "Dataset")]')) {
+			if (datasetType != "dataset" && text(doc, '.pull-right .label-default').includes("Dataset") ) {
 				if (item.extra) {
 					item.extra += "\nType: dataset";
 				}
@@ -164,12 +165,20 @@ function scrape(doc, url) {
 				}
 			}
 
+			if (preprintType != "preprint" && /Preprint|Working paper/.test(text(doc, '.pull-right .label-default'))) {
+				if (item.extra) {
+					item.extra += "\nType: article";
+				}
+				else {
+					item.extra = "Type: article";
+				}
+			}
 			//get PDF attachment, otherwise just snapshot.
 			if (pdfURL) {
 				item.attachments.push({ url: pdfURL, title: "Zenodo Full Text PDF", mimeType: "application/pdf" });
 			}
 			else {
-				item.attachments.push({ url: url, title: "Zenodo Snapshot", mimeType: "text/html" });
+				item.attachments.push({ document: doc, title: "Zenodo Snapshot", mimeType: "text/html" });
 			}
 			for (let i = 0; i < tags.length; i++) {
 				item.tags.push(tags[i].content);
@@ -214,8 +223,8 @@ function scrape(doc, url) {
 			item.complete();
 		});
 		trans.translate();
-	});
 }
+
 
 /** BEGIN TEST CASES **/
 var testCases = [
