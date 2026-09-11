@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsibv",
-	"lastUpdated": "2024-06-13 17:11:59"
+	"lastUpdated": "2026-09-11 03:40:34"
 }
 
 /*
@@ -83,8 +83,13 @@ async function doWeb(doc, url) {
 }
 
 async function scrape(doc, url = doc.location.href) {
-	if (doc.querySelector('meta[name="citation_pdf_url"]')) {
-		var pdfURL = attr(doc, 'meta[name="citation_pdf_url"]', "content");
+	let pdfURL;
+	if (attr('a[data-datatype="pdf"]', 'href')) {
+		pdfURL = attr('a[data-datatype="pdf"]', 'href');
+	}
+	// the meta tag sometimes is a preview with only the first couple of pages
+	else if (doc.querySelector('meta[name="citation_pdf_url"]')) {
+		pdfURL = attr(doc, 'meta[name="citation_pdf_url"]', "content");
 	}
 	let translator = Zotero.loadTranslator('web');
 	// Embedded Metadata
